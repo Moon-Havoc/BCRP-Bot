@@ -123,7 +123,10 @@ function v2Card(title: string, body: string, ephemeral = false) {
 
 const ephemeralCard = (title: string, body: string) => v2Card(title, body, true);
 
-async function handleOpen(interaction: ButtonInteraction): Promise<void> {
+async function handleOpen(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply(
       ephemeralCard("Server only", "Tickets can only be opened inside a server."),
@@ -139,7 +142,10 @@ async function handleOpen(interaction: ButtonInteraction): Promise<void> {
   });
 }
 
-async function handleCategorySelect(interaction: StringSelectMenuInteraction): Promise<void> {
+async function handleCategorySelect(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isStringSelectMenu()) return;
   if (!interaction.inGuild() || !interaction.guild) return;
 
   const category = interaction.values[0] as TicketCategory;
@@ -155,7 +161,10 @@ async function handleCategorySelect(interaction: StringSelectMenuInteraction): P
   });
 }
 
-async function handlePrioritySelect(interaction: StringSelectMenuInteraction): Promise<void> {
+async function handlePrioritySelect(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isStringSelectMenu()) return;
   if (!interaction.inGuild() || !interaction.guild) return;
 
   const priority = interaction.values[0] as TicketPriority;
@@ -204,7 +213,10 @@ async function getTicketContext(interaction: ButtonInteraction) {
   return ticket;
 }
 
-async function handleClaim(interaction: ButtonInteraction): Promise<void> {
+async function handleClaim(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
   if (!interaction.inGuild()) return;
   const ticket = await getTicketContext(interaction);
   if (!ticket) {
@@ -239,7 +251,10 @@ async function handleClaim(interaction: ButtonInteraction): Promise<void> {
   );
 }
 
-async function handleClose(interaction: ButtonInteraction): Promise<void> {
+async function handleClose(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
   if (!interaction.inGuild()) return;
   const ticket = await getTicketContext(interaction);
   if (!ticket) {
@@ -282,7 +297,10 @@ async function handleClose(interaction: ButtonInteraction): Promise<void> {
   );
 }
 
-async function handleMyTickets(interaction: ButtonInteraction): Promise<void> {
+async function handleMyTickets(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply(
       v2Card("Server only", "Tickets can only be viewed inside a server.", true),
@@ -318,7 +336,7 @@ export function ticketComponentHandlers(): Map<string, ComponentHandler> {
     [TICKET_BUTTON_IDS.claim, handleClaim],
     [TICKET_BUTTON_IDS.close, handleClose],
     ["bcrp:ticket:my", handleMyTickets],
-    ["bcrp:ticket:category", handleCategorySelect as unknown as ComponentHandler],
-    ["bcrp:ticket:priority", handlePrioritySelect as unknown as ComponentHandler],
+    ["bcrp:ticket:category", handleCategorySelect],
+    ["bcrp:ticket:priority", handlePrioritySelect],
   ]);
 }

@@ -1,4 +1,4 @@
-import type { ButtonInteraction } from "discord.js";
+import type { ButtonInteraction, StringSelectMenuInteraction } from "discord.js";
 import { createTextCard, toInteractionReply } from "@bcrp/discord-ui";
 import { getWelcomeConfig, recordVerification, VERIFY_BUTTON_PREFIX } from "../services/welcome.js";
 import type { ComponentHandler } from "../handlers/component-router.js";
@@ -7,7 +7,10 @@ function ephemeralCard(title: string, body: string) {
   return toInteractionReply(createTextCard({ title, body }), { ephemeral: true });
 }
 
-async function handleVerify(interaction: ButtonInteraction): Promise<void> {
+async function handleVerify(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
   if (!interaction.inGuild() || !interaction.guild) {
     await interaction.reply(ephemeralCard("Server only", "Verification only works in the server."));
     return;

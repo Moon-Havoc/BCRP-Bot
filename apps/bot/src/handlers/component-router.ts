@@ -1,12 +1,19 @@
-import { Events, type ButtonInteraction, type Client } from "discord.js";
+import {
+  Events,
+  type ButtonInteraction,
+  type StringSelectMenuInteraction,
+  type Client,
+} from "discord.js";
 import type { BcrpLogger } from "@bcrp/logger";
 import { createTextCard, toInteractionReply } from "@bcrp/discord-ui";
 
-export type ComponentHandler = (interaction: ButtonInteraction) => Promise<void>;
+export type ComponentHandler = (
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+) => Promise<void>;
 
 /**
- * Routes button interactions by exact customId. Chat input commands are handled
- * separately by interaction-router.ts.
+ * Routes button and select menu interactions by customId. Chat input commands
+ * are handled separately by interaction-router.ts.
  */
 export function registerComponentRouter(
   client: Client,
@@ -14,7 +21,7 @@ export function registerComponentRouter(
   logger: BcrpLogger,
 ): void {
   client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isButton()) return;
+    if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
     // Handlers may register an exact customId or a prefix. A key ending in ":"
     // matches anything below it; other keys only match a ":"-delimited suffix.
     let handler: ComponentHandler | undefined;
