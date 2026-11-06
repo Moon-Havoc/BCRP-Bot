@@ -13,3 +13,4 @@ coverage/
 apps/dashboard/next-env.d.ts
 **/next-env.d.ts
 packages/database/src/generated/
+.vercel

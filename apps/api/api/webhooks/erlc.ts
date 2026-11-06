@@ -1,11 +1,40 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  extractWebhookSignatureHeaders,
-  verifyWebhookSignature,
-} from "../src/middleware/erlc-webhook-auth.js";
-import { createLogger } from "@bcrp/logger";
+import { verify } from "@noble/ed25519";
+import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 
-const logger = createLogger("api-erlc-webhook-vercel");
+const ERLC_WEBHOOK_PUBLIC_KEY_B64 =
+  "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA=";
+
+function extractWebhookSignatureHeaders(headers: Record<string, unknown>) {
+  const timestamp = headers["x-signature-timestamp"];
+  const signature = headers["x-signature-ed25519"];
+  if (typeof timestamp !== "string" || typeof signature !== "string") {
+    return null;
+  }
+  return { timestamp, signature };
+}
+
+async function verifyWebhookSignature(
+  rawBody: Buffer,
+  headers: { timestamp: string; signature: string },
+  maxSkewSeconds = 300,
+): Promise<boolean> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const timestampNum = parseInt(headers.timestamp, 10);
+    if (isNaN(timestampNum)) return false;
+    if (Math.abs(now - timestampNum) > maxSkewSeconds) return false;
+
+    const message = new Uint8Array([...utf8ToBytes(headers.timestamp), ...rawBody]);
+    const signatureBytes = hexToBytes(headers.signature);
+    const publicKeyBytes = Buffer.from(ERLC_WEBHOOK_PUBLIC_KEY_B64, "base64");
+    const rawPublicKey = publicKeyBytes.slice(-32);
+
+    return await verify(signatureBytes, message, rawPublicKey);
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -16,7 +45,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // Get raw body - Vercel provides it as a Buffer
   const rawBody = req.body as Buffer | string | undefined;
   if (!rawBody) {
     res.status(400).json({
@@ -39,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const isValid = await verifyWebhookSignature(bodyBuffer, headers);
   if (!isValid) {
-    logger.warn({}, "Invalid ER:LC webhook signature");
+    console.warn("Invalid ER:LC webhook signature");
     res.status(401).json({
       ok: false,
       error: { code: "INVALID_SIGNATURE", message: "Webhook signature verification failed." },
@@ -49,14 +77,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const payload = JSON.parse(bodyBuffer.toString("utf8"));
-    logger.info({ event: payload?.event, player: payload?.player }, "ER:LC webhook received");
+    console.log("ER:LC webhook received:", { event: payload?.event, player: payload?.player });
 
     // TODO: Forward to Discord bot via internal API or database
     // For now, just acknowledge receipt
 
     res.status(200).json({ ok: true, data: { received: true } });
   } catch (error) {
-    logger.error({ err: error }, "Failed to parse ER:LC webhook");
+    console.error("Failed to parse ER:LC webhook:", error);
     res.status(400).json({
       ok: false,
       error: { code: "INVALID_JSON", message: "Webhook body is not valid JSON." },
