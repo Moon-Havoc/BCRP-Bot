@@ -33,15 +33,16 @@ const server = http.createServer((req, res) => {
 
   req.on('end', () => {
     try {
-      const hasSignature = req.headers['x-signature-ed25519'] && req.headers['x-signature-timestamp'];
-      
+      // Check for signature headers
+      const signature = req.headers['x-signature-ed25519'];
+      const timestamp = req.headers['x-signature-timestamp'];
+      const hasSignature = signature && timestamp;
+
       console.log('ERLC webhook received:', {
         hasSignature,
-        body: body,
-        headers: {
-          'x-signature-ed25519': req.headers['x-signature-ed25519'],
-          'x-signature-timestamp': req.headers['x-signature-timestamp']
-        }
+        signature: signature,
+        timestamp: timestamp,
+        body: body
       });
 
       // If no signature headers, return 401 (invalid probe)
@@ -52,8 +53,19 @@ const server = http.createServer((req, res) => {
         return;
       }
 
-      // Has signature headers - this is the valid probe, return 200
-      console.log('Has signature headers - returning 200 for valid probe');
+      // Validate signature format (should be hex string)
+      const isValidSignatureFormat = /^[0-9a-fA-F]+$/.test(signature) && signature.length > 0;
+      const isValidTimestamp = !isNaN(parseInt(timestamp, 10));
+
+      if (!isValidSignatureFormat || !isValidTimestamp) {
+        console.log('Invalid signature format - returning 401');
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'Invalid signature format' }));
+        return;
+      }
+
+      // Valid signature headers - this is the valid probe, return 200
+      console.log('Valid signature headers - returning 200 for valid probe');
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, data: { received: true } }));
     } catch (error) {
