@@ -13,7 +13,26 @@ export const TICKET_BUTTON_IDS = {
   open: "bcrp:ticket:open",
   claim: "bcrp:ticket:claim",
   close: "bcrp:ticket:close",
+  rate: "bcrp:ticket:rate",
 } as const;
+
+export const TICKET_CATEGORIES = {
+  general: "General Support",
+  internal: "Internal Affairs Support",
+  management: "Management Support",
+  leadership: "Leadership Support",
+} as const;
+
+export type TicketCategory = keyof typeof TICKET_CATEGORIES;
+
+export const TICKET_PRIORITIES = {
+  low: "🟢 Low",
+  medium: "🟡 Medium",
+  high: "🟠 High",
+  urgent: "🔴 Urgent",
+} as const;
+
+export type TicketPriority = keyof typeof TICKET_PRIORITIES;
 
 const OPEN_TICKET_STATUSES = ["OPEN", "CLAIMED"] as const;
 
@@ -44,7 +63,14 @@ export async function setTicketCategoryId(guild: Guild, categoryChannelId: strin
 }
 
 export type OpenTicketResult =
-  | { ok: true; ticketId: string; ticketNumber: number; channel: TextChannel }
+  | {
+      ok: true;
+      ticketId: string;
+      ticketNumber: number;
+      channel: TextChannel;
+      category: TicketCategory;
+      priority: TicketPriority;
+    }
   | { ok: false; reason: "not_configured" | "already_open"; ticketNumber?: number };
 
 /**
@@ -56,6 +82,8 @@ export async function openTicket(
   guild: Guild,
   opener: User,
   subject: string,
+  category: TicketCategory = "general",
+  priority: TicketPriority = "medium",
 ): Promise<OpenTicketResult> {
   const categoryId = await getTicketCategoryId(guild.id);
   if (!categoryId) return { ok: false, reason: "not_configured" };
@@ -80,12 +108,14 @@ export async function openTicket(
   });
   const ticketNumber = (latest?.ticketNumber ?? 0) + 1;
   const title = subject.slice(0, 200);
+  const categoryName = TICKET_CATEGORIES[category];
+  const priorityName = TICKET_PRIORITIES[priority];
 
   const channel = (await guild.channels.create({
     name: `ticket-${ticketNumber}`,
     type: ChannelType.GuildText,
     parent: categoryId,
-    topic: `Ticket #${ticketNumber} — ${title} (opened by ${opener.tag})`,
+    topic: `Ticket #${ticketNumber} — ${categoryName} — ${priorityName} — ${title} (opened by ${opener.tag})`,
     permissionOverwrites: buildTicketOverwrites(guild, opener),
   })) as TextChannel;
 
@@ -96,6 +126,8 @@ export async function openTicket(
         ticketNumber,
         channelId: channel.id,
         openerDiscordId: opener.id,
+        category,
+        priority,
         title,
         status: "OPEN",
       },
@@ -107,13 +139,19 @@ export async function openTicket(
         action: AuditAction.TicketAction,
         targetType: "ticket",
         targetId: String(ticketNumber),
-        metadata: { ticketId: created.id, event: "opened", subject: title },
+        metadata: {
+          ticketId: created.id,
+          event: "opened",
+          subject: title,
+          category,
+          priority,
+        },
       },
     });
     return created;
   });
 
-  return { ok: true, ticketId: ticket.id, ticketNumber, channel };
+  return { ok: true, ticketId: ticket.id, ticketNumber, channel, category, priority };
 }
 
 function buildTicketOverwrites(guild: Guild, opener: User) {
@@ -156,8 +194,10 @@ export async function recordTicketEvent(params: {
   guildId: string;
   ticketId: string;
   actorDiscordId: string;
-  event: "claimed" | "closed";
+  event: "claimed" | "closed" | "rated";
   assignedDiscordId?: string;
+  rating?: number;
+  transcriptUrl?: string;
 }): Promise<void> {
   await prisma.$transaction(async (tx) => {
     if (params.event === "claimed") {
@@ -170,10 +210,21 @@ export async function recordTicketEvent(params: {
             : {}),
         },
       });
-    } else {
+    } else if (params.event === "closed") {
       await tx.ticket.update({
         where: { id: params.ticketId },
-        data: { status: "CLOSED", closedAt: new Date() },
+        data: {
+          status: "CLOSED",
+          closedAt: new Date(),
+          ...(params.transcriptUrl !== undefined ? { transcriptUrl: params.transcriptUrl } : {}),
+        },
+      });
+    } else if (params.event === "rated") {
+      await tx.ticket.update({
+        where: { id: params.ticketId },
+        data: {
+          ...(params.rating !== undefined ? { rating: params.rating } : {}),
+        },
       });
     }
     await tx.auditLog.create({
@@ -183,7 +234,10 @@ export async function recordTicketEvent(params: {
         action: AuditAction.TicketAction,
         targetType: "ticket",
         targetId: params.ticketId,
-        metadata: { event: params.event },
+        metadata: {
+          event: params.event,
+          ...(params.rating !== undefined ? { rating: params.rating } : {}),
+        },
       },
     });
   });

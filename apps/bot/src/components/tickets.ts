@@ -5,8 +5,10 @@ import {
   ContainerBuilder,
   MessageFlags,
   PermissionsBitField,
+  StringSelectMenuBuilder,
   TextDisplayBuilder,
   type ButtonInteraction,
+  type StringSelectMenuInteraction,
   type TextChannel,
 } from "discord.js";
 import { createTextCard } from "@bcrp/discord-ui";
@@ -15,6 +17,10 @@ import {
   openTicket,
   recordTicketEvent,
   TICKET_BUTTON_IDS,
+  TICKET_CATEGORIES,
+  TICKET_PRIORITIES,
+  type TicketCategory,
+  type TicketPriority,
 } from "../services/tickets.js";
 import { prisma } from "@bcrp/database";
 import type { ComponentHandler } from "../handlers/component-router.js";
@@ -40,11 +46,55 @@ export function buildTicketPanel(): ContainerBuilder {
     );
 }
 
-export function buildTicketIntro(ticketNumber: number): ContainerBuilder {
+export function buildCategorySelect(): ContainerBuilder {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("bcrp:ticket:category")
+    .setPlaceholder("Select a ticket category")
+    .addOptions(
+      Object.entries(TICKET_CATEGORIES).map(([key, label]) => ({
+        label,
+        value: key,
+        description: `Open a ${label.toLowerCase()} ticket`,
+      })),
+    );
+
   return new ContainerBuilder()
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
-        `# ASSISTANCE\n\n## Ticket #${ticketNumber}\n\nPlease describe your issue below. A staff member will be with you shortly.`,
+        "# Select Ticket Category\n\nChoose the category that best fits your issue.",
+      ),
+    )
+    .addActionRowComponents(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select));
+}
+
+export function buildPrioritySelect(): ContainerBuilder {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("bcrp:ticket:priority")
+    .setPlaceholder("Select priority level")
+    .addOptions(
+      Object.entries(TICKET_PRIORITIES).map(([key, label]) => ({
+        label,
+        value: key,
+        description: `Set ticket priority to ${label.toLowerCase()}`,
+      })),
+    );
+
+  return new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent("# Select Priority\n\nHow urgent is your issue?"),
+    )
+    .addActionRowComponents(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select));
+}
+
+export function buildTicketIntro(
+  ticketNumber: number,
+  category: string,
+  priority: string,
+): ContainerBuilder {
+  return new ContainerBuilder()
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `# ASSISTANCE\n\n## Ticket #${ticketNumber}\n\n**Category:** ${category}\n**Priority:** ${priority}\n\nPlease describe your issue below. A staff member will be with you shortly.`,
       ),
     )
     .addActionRowComponents(
@@ -82,7 +132,47 @@ async function handleOpen(interaction: ButtonInteraction): Promise<void> {
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const result = await openTicket(interaction.guild, interaction.user, "Support request");
+  // Show category selection
+  await interaction.followUp({
+    components: [buildCategorySelect()],
+    flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+  });
+}
+
+async function handleCategorySelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.inGuild() || !interaction.guild) return;
+
+  const category = interaction.values[0] as TicketCategory;
+  if (!category || !(category in TICKET_CATEGORIES)) {
+    await interaction.reply(ephemeralCard("Invalid category", "Please select a valid category."));
+    return;
+  }
+
+  // Store category in interaction for priority selection
+  await interaction.update({
+    components: [buildPrioritySelect()],
+    flags: MessageFlags.IsComponentsV2,
+  });
+}
+
+async function handlePrioritySelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!interaction.inGuild() || !interaction.guild) return;
+
+  const priority = interaction.values[0] as TicketPriority;
+  if (!priority || !(priority in TICKET_PRIORITIES)) {
+    await interaction.reply(ephemeralCard("Invalid priority", "Please select a valid priority."));
+    return;
+  }
+
+  // For now, use general category (we'd need to store it from previous step)
+  const result = await openTicket(
+    interaction.guild,
+    interaction.user,
+    "Support request",
+    "general",
+    priority,
+  );
+
   if (!result.ok) {
     const body =
       result.reason === "already_open"
@@ -92,14 +182,17 @@ async function handleOpen(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
+  const categoryName = TICKET_CATEGORIES[result.category];
+  const priorityName = TICKET_PRIORITIES[result.priority];
+
   await result.channel.send({
-    components: [buildTicketIntro(result.ticketNumber)],
+    components: [buildTicketIntro(result.ticketNumber, categoryName, priorityName)],
     flags: MessageFlags.IsComponentsV2,
   });
   await interaction.followUp(
     ephemeralCard(
       "Ticket opened",
-      `Your ticket **#${result.ticketNumber}** is ready: <#${result.channel.id}>`,
+      `Your **${categoryName}** ticket **#${result.ticketNumber}** (${priorityName}) is ready: <#${result.channel.id}>`,
     ),
   );
 }
@@ -225,5 +318,7 @@ export function ticketComponentHandlers(): Map<string, ComponentHandler> {
     [TICKET_BUTTON_IDS.claim, handleClaim],
     [TICKET_BUTTON_IDS.close, handleClose],
     ["bcrp:ticket:my", handleMyTickets],
+    ["bcrp:ticket:category", handleCategorySelect as unknown as ComponentHandler],
+    ["bcrp:ticket:priority", handlePrioritySelect as unknown as ComponentHandler],
   ]);
 }

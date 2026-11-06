@@ -101,15 +101,16 @@ export async function recordModerationCase(input: ModerationCaseInput): Promise<
     // Send log card to mod log channel
     const guild = input.guild as Guild | undefined;
     if (guild) {
-      const typeEmoji = {
-        WARNING: "⚠️",
-        NOTE: "📝",
-        TIMEOUT: "⏱️",
-        KICK: "👢",
-        BAN: "🔨",
-        UNBAN: "✅",
-      }[input.type] ?? "📋";
-      
+      const typeEmoji =
+        {
+          WARNING: "⚠️",
+          NOTE: "📝",
+          TIMEOUT: "⏱️",
+          KICK: "👢",
+          BAN: "🔨",
+          UNBAN: "✅",
+        }[input.type] ?? "📋";
+
       await sendLogCard(
         guild,
         "modLogChannelId",

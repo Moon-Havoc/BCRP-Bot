@@ -235,8 +235,12 @@ model Ticket {
   channelId         String?      @map("channel_id") @db.VarChar(20)
   openerDiscordId   String       @map("opener_discord_id") @db.VarChar(20)
   assignedDiscordId String?      @map("assigned_discord_id") @db.VarChar(20)
+  category          String?      @db.VarChar(50)
+  priority          String?      @db.VarChar(20)
   title             String       @db.VarChar(200)
   status            TicketStatus @default(OPEN)
+  transcriptUrl     String?      @map("transcript_url") @db.VarChar(500)
+  rating            Int?         @db.SmallInt
   closedAt          DateTime?    @map("closed_at") @db.Timestamptz(3)
   createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -244,6 +248,7 @@ model Ticket {
 
   @@unique([guildId, ticketNumber])
   @@index([guildId, status, createdAt])
+  @@index([guildId, category])
   @@map("tickets")
 }
 
