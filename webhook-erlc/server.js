@@ -159,6 +159,28 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Test endpoint for manual Discord forwarding
+  if (url.pathname === '/test-discord' && req.method === 'GET') {
+    const testPayload = {
+      server: 'test',
+      events: [{
+        event: 'player_join',
+        timestamp: Math.floor(Date.now() / 1000),
+        origin: 'test',
+        data: { player: 'TestPlayer' }
+      }]
+    };
+    
+    forwardToDiscord(testPayload).then(() => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, message: 'Test event sent to Discord' }));
+    }).catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: err.message }));
+    });
+    return;
+  }
+
   // Collect raw body bytes
   const chunks = [];
   req.on('data', chunk => {
