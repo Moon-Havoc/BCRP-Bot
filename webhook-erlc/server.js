@@ -58,7 +58,8 @@ const server = http.createServer((req, res) => {
   }
 
   const url = new URL(req.url, `http://${req.headers.host}`);
-  if (url.pathname !== '/api/erlc') {
+  // Accept both / and /api/erlc paths
+  if (url.pathname !== '/' && url.pathname !== '/api/erlc') {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: false, error: 'Not found' }));
     return;
