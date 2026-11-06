@@ -66,37 +66,66 @@ function buildErlcEventCard(
 ): ContainerBuilder {
   const container = new ContainerBuilder();
 
+  // Extract common fields from payload
+  const accountAge = payload?.accountAge as string | number | undefined;
+  const team = payload?.team as string | undefined;
+  const callsign = payload?.callsign as string | undefined;
+  const location = payload?.location as string | undefined;
+  const timestamp = payload?.timestamp as number | undefined;
+
   switch (eventType) {
-    case "player_join":
-      container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `# 🎮 Player Joined\n\n**${player}** has joined the ER:LC server.\n\nWelcome to Beach Coast Roleplay!`,
-        ),
-      );
-      break;
+    case "player_join": {
+      let details = `**Player:** ${player}`;
+      if (accountAge) details += `\n**Account Age:** ${accountAge}`;
+      if (team) details += `\n**Team:** ${team}`;
+      if (callsign) details += `\n**Callsign:** ${callsign}`;
+      if (location) details += `\n**Location:** ${location}`;
+      if (timestamp) details += `\n**Time:** ${new Date(timestamp).toLocaleString()}`;
 
-    case "player_leave":
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `# 👋 Player Left\n\n**${player}** has left the ER:LC server.\n\nThanks for playing!`,
-        ),
-      );
-      break;
-
-    case "chat": {
-      const message = (payload?.message as string) ?? "";
-      container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(`# 💬 ER:LC Chat\n\n**${player}:** ${message}`),
+        new TextDisplayBuilder().setContent(`# 🎮 Player Joined\n\n${details}`),
       );
       break;
     }
 
-    default:
+    case "player_leave": {
+      let details = `**Player:** ${player}`;
+      if (team) details += `\n**Team:** ${team}`;
+      if (callsign) details += `\n**Callsign:** ${callsign}`;
+      if (location) details += `\n**Location:** ${location}`;
+      if (timestamp) details += `\n**Time:** ${new Date(timestamp).toLocaleString()}`;
+
       container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-          `# 🎮 ER:LC Event\n\n**Event:** ${eventType}\n**Player:** ${player}\n\n\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 500)}\n\`\`\``,
-        ),
+        new TextDisplayBuilder().setContent(`# 👋 Player Left\n\n${details}`),
       );
+      break;
+    }
+
+    case "chat": {
+      const message = (payload?.message as string) ?? "";
+      let details = `**Player:** ${player}\n**Message:** ${message}`;
+      if (team) details += `\n**Team:** ${team}`;
+      if (timestamp) details += `\n**Time:** ${new Date(timestamp).toLocaleString()}`;
+
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`# 💬 ER:LC Chat\n\n${details}`),
+      );
+      break;
+    }
+
+    default: {
+      let details = `**Event:** ${eventType}\n**Player:** ${player}`;
+      // Add any other payload fields
+      Object.entries(payload).forEach(([key, value]) => {
+        if (key !== "event" && key !== "player") {
+          details += `\n**${key}:** ${value}`;
+        }
+      });
+
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(`# 🎮 ER:LC Event\n\n${details}`),
+      );
+    }
   }
 
   return container;
