@@ -173,6 +173,9 @@ async function handlePrioritySelect(
     return;
   }
 
+  // Acknowledge the interaction first
+  await interaction.deferUpdate();
+
   // For now, use general category (we'd need to store it from previous step)
   const result = await openTicket(
     interaction.guild,
