@@ -15,6 +15,7 @@ const commonSchema = z.object({
   DISCORD_CLIENT_SECRET: z.string().min(1).optional(),
   DISCORD_DEV_GUILD_ID: optionalId,
   ERLC_API_KEY: z.string().min(1).optional(),
+  ERLC_APP_KEY: z.string().min(1).optional(),
   ERLC_API_BASE_URL: z.string().url().default("https://api.erlc.gg"),
   ERLC_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
   ERLC_MONITOR_INTERVAL_SECONDS: z.coerce.number().int().min(15).max(600).default(60),

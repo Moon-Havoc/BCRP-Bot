@@ -18,6 +18,8 @@ const apiErrorSchema = z
 
 export interface ErlcClientOptions {
   apiKey: string;
+  /** Global API key for registered public applications (Authorization header). */
+  appKey?: string;
   baseUrl?: string;
   timeoutMs?: number;
   fetchImplementation?: typeof fetch;
@@ -25,6 +27,7 @@ export interface ErlcClientOptions {
 
 export class ErlcClient {
   private readonly apiKey: string;
+  private readonly appKey: string | undefined;
   private readonly baseUrl: URL;
   private readonly timeoutMs: number;
   private readonly fetchImplementation: typeof fetch;
@@ -34,6 +37,7 @@ export class ErlcClient {
       throw new ErlcApiError("NOT_CONFIGURED", "ER:LC API key is not configured.");
     }
     this.apiKey = options.apiKey;
+    this.appKey = options.appKey?.trim() || undefined;
     this.baseUrl = new URL(options.baseUrl ?? "https://api.erlc.gg");
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.fetchImplementation = options.fetchImplementation ?? fetch;
@@ -46,6 +50,7 @@ export class ErlcClient {
     }
     return new ErlcClient({
       apiKey: config.ERLC_API_KEY,
+      appKey: config.ERLC_APP_KEY,
       baseUrl: config.ERLC_API_BASE_URL,
       timeoutMs: config.ERLC_REQUEST_TIMEOUT_MS,
     });
@@ -65,6 +70,7 @@ export class ErlcClient {
         method,
         headers: {
           "server-key": this.apiKey,
+          ...(this.appKey ? { authorization: this.appKey } : {}),
           accept: "application/json",
           ...(body !== undefined ? { "content-type": "application/json" } : {}),
         },
