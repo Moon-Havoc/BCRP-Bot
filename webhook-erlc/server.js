@@ -18,16 +18,33 @@ async function verifyWebhookSignature(rawBody, headers, maxSkewSeconds = 300) {
   try {
     const now = Math.floor(Date.now() / 1000);
     const timestampNum = parseInt(headers.timestamp, 10);
-    if (isNaN(timestampNum)) return false;
-    if (Math.abs(now - timestampNum) > maxSkewSeconds) return false;
+    if (isNaN(timestampNum)) {
+      console.log('Invalid timestamp:', headers.timestamp);
+      return false;
+    }
+    if (Math.abs(now - timestampNum) > maxSkewSeconds) {
+      console.log('Timestamp too old/new:', { now, timestampNum, diff: Math.abs(now - timestampNum) });
+      return false;
+    }
 
+    // Build message: timestamp + raw_body
     const message = new Uint8Array([...utf8ToBytes(headers.timestamp), ...rawBody]);
     const signatureBytes = hexToBytes(headers.signature);
     const publicKeyBytes = Buffer.from(ERLC_WEBHOOK_PUBLIC_KEY_B64, 'base64');
     const rawPublicKey = publicKeyBytes.slice(-32);
 
-    return await verify(signatureBytes, message, rawPublicKey);
-  } catch {
+    console.log('Verifying signature:', {
+      timestamp: headers.timestamp,
+      signatureLength: headers.signature.length,
+      messageLength: message.length,
+      publicKeyLength: rawPublicKey.length
+    });
+
+    const result = await verify(signatureBytes, message, rawPublicKey);
+    console.log('Signature verification result:', result);
+    return result;
+  } catch (error) {
+    console.error('Signature verification error:', error);
     return false;
   }
 }
@@ -73,6 +90,7 @@ const server = http.createServer((req, res) => {
       console.log('ERLC webhook received:', {
         hasSignature: !!headers,
         bodyLength: rawBody.length,
+        bodyPreview: rawBody.toString('utf8').substring(0, 100),
         timestamp: headers?.timestamp,
         signature: headers?.signature?.substring(0, 20) + '...'
       });
