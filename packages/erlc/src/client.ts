@@ -50,7 +50,7 @@ export class ErlcClient {
     }
     return new ErlcClient({
       apiKey: config.ERLC_API_KEY,
-      appKey: config.ERLC_APP_KEY,
+      ...(config.ERLC_APP_KEY ? { appKey: config.ERLC_APP_KEY } : {}),
       baseUrl: config.ERLC_API_BASE_URL,
       timeoutMs: config.ERLC_REQUEST_TIMEOUT_MS,
     });

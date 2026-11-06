@@ -34,7 +34,11 @@ export async function runErlcCommand(command: string): Promise<ErlcCommandResult
   try {
     const client = createErlcClient();
     const result = await client.runServerCommand(command);
-    return { ok: true, message: result.message, commandId: result.commandId };
+    return {
+      ok: true,
+      ...(result.message !== undefined ? { message: result.message } : {}),
+      ...(result.commandId !== undefined ? { commandId: result.commandId } : {}),
+    };
   } catch (error) {
     if (error instanceof ErlcApiError) {
       const retry =

@@ -1,12 +1,25 @@
 import { readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import { Collection } from "discord.js";
 import type { BotCommand } from "../types.js";
 
-const commandsDirectory = path
-  .dirname(fileURLToPath(import.meta.url))
-  .replace(/handlers$/, "commands");
+function resolveCommandsDirectory(): string {
+  const candidates = [
+    // Source layout: src/handlers/command-loader.ts -> src/commands
+    path.dirname(fileURLToPath(import.meta.url)).replace(/handlers$/, "commands"),
+    // Bundled layout on hosts: cwd/dist/commands
+    path.resolve(process.cwd(), "dist/commands"),
+    path.resolve(process.cwd(), "src/commands"),
+  ];
+  const commandsDir = candidates.find(
+    (candidate) => path.basename(candidate) === "commands" && existsSync(candidate),
+  );
+  return commandsDir ?? candidates[0]!;
+}
+
+const commandsDirectory = resolveCommandsDirectory();
 
 export async function loadCommands(
   directory = commandsDirectory,

@@ -1,11 +1,26 @@
 import { readdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import type { Client } from "discord.js";
 import { createLogger } from "@bcrp/logger";
 import type { BotEvent } from "../types.js";
 
-const eventsDirectory = path.dirname(fileURLToPath(import.meta.url)).replace(/handlers$/, "events");
+function resolveEventsDirectory(): string {
+  const candidates = [
+    // Source layout: src/handlers/event-loader.ts -> src/events
+    path.dirname(fileURLToPath(import.meta.url)).replace(/handlers$/, "events"),
+    // Bundled layout on hosts: cwd/dist/events
+    path.resolve(process.cwd(), "dist/events"),
+    path.resolve(process.cwd(), "src/events"),
+  ];
+  const eventsDir = candidates.find(
+    (candidate) => path.basename(candidate) === "events" && existsSync(candidate),
+  );
+  return eventsDir ?? candidates[0]!;
+}
+
+const eventsDirectory = resolveEventsDirectory();
 const logger = createLogger("bot-events");
 
 export async function loadEvents(client: Client, directory = eventsDirectory): Promise<void> {
