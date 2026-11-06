@@ -54,6 +54,84 @@ function verifyWebhookSignature(rawBody, headers) {
   }
 }
 
+const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1568088136700137502/KBxLMC5Hce2L2fRsu0ti5aHNYu4Z_4iFfgRm_1m56xewO8XfNURGyJL5OQtpgYvGU_E8';
+
+async function forwardToDiscord(payload) {
+  try {
+    const events = payload.events || [];
+    
+    for (const event of events) {
+      const embed = createDiscordEmbed(event);
+      if (!embed) continue; // Skip probe events
+      
+      await fetch(DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ embeds: [embed] })
+      });
+      
+      console.log('Forwarded event to Discord:', event.event);
+    }
+  } catch (error) {
+    console.error('Failed to forward to Discord:', error);
+  }
+}
+
+function createDiscordEmbed(event) {
+  const eventType = event.event || 'unknown';
+  const data = event.data || {};
+  const timestamp = event.timestamp ? new Date(event.timestamp * 1000) : new Date();
+  
+  // Determine embed color and title based on event type
+  let color = 0x5865F2; // Default blurple
+  let title = 'ER:LC Event';
+  let description = '';
+  
+  switch (eventType) {
+    case 'player_join':
+      color = 0x00FF00; // Green
+      title = '🎮 Player Joined';
+      description = `**${data.player || 'Unknown'}** has joined the ER:LC server.`;
+      break;
+    case 'player_leave':
+      color = 0xFF0000; // Red
+      title = '👋 Player Left';
+      description = `**${data.player || 'Unknown'}** has left the ER:LC server.`;
+      break;
+    case 'chat':
+      color = 0x3498DB; // Blue
+      title = '💬 ER:LC Chat';
+      description = `**${data.player || 'Unknown'}:** ${data.message || ''}`;
+      break;
+    case 'WebhookProbe':
+      // Don't forward probe events to Discord
+      return null;
+    default:
+      color = 0xFFA500; // Orange
+      title = `🎮 ER:LC ${eventType}`;
+      description = `Event: ${eventType}\nData: ${JSON.stringify(data, null, 2)}`;
+  }
+  
+  if (!description) return null;
+  
+  return {
+    title,
+    description,
+    color,
+    timestamp: timestamp.toISOString(),
+    footer: {
+      text: 'ER:LC Server'
+    },
+    fields: [
+      {
+        name: 'Time',
+        value: `<t:${Math.floor(timestamp.getTime() / 1000)}:F>`,
+        inline: true
+      }
+    ]
+  };
+}
+
 const server = http.createServer((req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -123,8 +201,9 @@ const server = http.createServer((req, res) => {
       const payload = JSON.parse(rawBody.toString('utf8'));
       console.log('ERLC webhook payload:', payload);
 
-      // For now, just acknowledge receipt
-      // TODO: Forward to Discord with Components V2
+      // Forward to Discord webhook
+      await forwardToDiscord(payload);
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, data: { received: true } }));
     } catch (error) {
