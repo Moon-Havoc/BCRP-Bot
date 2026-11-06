@@ -44,13 +44,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.method === 'GET') {
-    // Respond to GET requests for URL validation
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, message: 'ER:LC webhook endpoint' }));
-    return;
-  }
-
+  // Only accept POST requests
   if (req.method !== 'POST') {
     res.writeHead(405, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }));
