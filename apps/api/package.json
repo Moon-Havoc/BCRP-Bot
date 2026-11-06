@@ -14,13 +14,10 @@
     "@bcrp/database": "workspace:*",
     "@bcrp/logger": "workspace:*",
     "@bcrp/shared": "workspace:*",
-    "@noble/ed25519": "^3.2.0",
-    "@noble/hashes": "^2.4.0",
     "fastify": "^5.12.8",
     "zod": "^4.3.4"
   },
   "devDependencies": {
-    "@vercel/node": "^30.0.0",
     "tsx": "^4.23.0"
   }
 }

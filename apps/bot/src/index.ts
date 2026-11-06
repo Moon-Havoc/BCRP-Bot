@@ -7,7 +7,6 @@ import { registerComponentRouter } from "./handlers/component-router.js";
 import { registerInteractionRouter } from "./handlers/interaction-router.js";
 import { ticketComponentHandlers } from "./components/tickets.js";
 import { verificationComponentHandlers } from "./components/verification.js";
-import { startWebhookPoller } from "./services/webhook-poller.js";
 import { createHealthServer } from "./services/health-server.js";
 import { createBotClient } from "./services/client.js";
 
@@ -24,7 +23,6 @@ async function main(): Promise<void> {
     new Map([...ticketComponentHandlers(), ...verificationComponentHandlers()]),
     logger,
   );
-  startWebhookPoller(client);
   client.on("error", (error) => logger.error({ err: error }, "Discord client error"));
 
   const healthServer = await createHealthServer(
