@@ -1,0 +1,23 @@
+services:
+  - type: worker
+    name: bcrp-bot
+    runtime: node
+    plan: 0.5c-512mb
+    region: ohio
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm db:generate
+    startCommand: pnpm --filter @bcrp/bot start
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_APPLICATION_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ERLC_API_KEY
+        sync: false
