@@ -21,6 +21,18 @@ const command: BotCommand = {
         .setDescription("Channel for member join/leave/role logs")
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
     )
+    .addChannelOption((option) =>
+      option
+        .setName("mod_log_channel")
+        .setDescription("Channel for moderation action logs")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("automod_log_channel")
+        .setDescription("Channel for automod action logs")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
+    )
     .addBooleanOption((option) =>
       option.setName("clear").setDescription("Remove all logging channels"),
     ),
@@ -36,8 +48,12 @@ const command: BotCommand = {
     const patch: Partial<LogConfig> = {};
     const messageChannel = interaction.options.getChannel("message_log_channel");
     const memberChannel = interaction.options.getChannel("member_log_channel");
+    const modChannel = interaction.options.getChannel("mod_log_channel");
+    const automodChannel = interaction.options.getChannel("automod_log_channel");
     if (messageChannel && "id" in messageChannel) patch.messageLogChannelId = messageChannel.id;
     if (memberChannel && "id" in memberChannel) patch.memberLogChannelId = memberChannel.id;
+    if (modChannel && "id" in modChannel) patch.modLogChannelId = modChannel.id;
+    if (automodChannel && "id" in automodChannel) patch.automodLogChannelId = automodChannel.id;
 
     await updateLogConfig(guild, patch, clear);
     await interaction.reply(

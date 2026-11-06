@@ -44,6 +44,7 @@ const command: BotCommand = {
     });
     const caseNumber = await recordModerationCase({
       guildId: guild.id,
+      guild,
       type: ModerationCaseType.BAN,
       targetDiscordId: user.id,
       actorDiscordId: interaction.user.id,

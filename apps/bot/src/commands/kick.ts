@@ -49,6 +49,7 @@ const command: BotCommand = {
     await member.kick(reason);
     const caseNumber = await recordModerationCase({
       guildId: guild.id,
+      guild,
       type: ModerationCaseType.KICK,
       targetDiscordId: member.id,
       actorDiscordId: interaction.user.id,

@@ -6,6 +6,8 @@ import { ensureGuild } from "./moderation.js";
 export interface LogConfig {
   messageLogChannelId?: string;
   memberLogChannelId?: string;
+  modLogChannelId?: string;
+  automodLogChannelId?: string;
 }
 
 export async function getLogConfig(guildId: string): Promise<LogConfig> {
@@ -21,6 +23,12 @@ export async function getLogConfig(guildId: string): Promise<LogConfig> {
   if (typeof raw.memberLogChannelId === "string") {
     config.memberLogChannelId = raw.memberLogChannelId;
   }
+  if (typeof raw.modLogChannelId === "string") {
+    config.modLogChannelId = raw.modLogChannelId;
+  }
+  if (typeof raw.automodLogChannelId === "string") {
+    config.automodLogChannelId = raw.automodLogChannelId;
+  }
   return config;
 }
 
@@ -35,7 +43,12 @@ export async function updateLogConfig(
     select: { settings: true },
   });
   const base = { ...((existing?.settings as Record<string, unknown>) ?? {}) };
-  for (const key of ["messageLogChannelId", "memberLogChannelId"] as const) {
+  for (const key of [
+    "messageLogChannelId",
+    "memberLogChannelId",
+    "modLogChannelId",
+    "automodLogChannelId",
+  ] as const) {
     if (clear) delete base[key];
     else if (patch[key] !== undefined) base[key] = patch[key];
   }

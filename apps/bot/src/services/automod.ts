@@ -9,6 +9,7 @@ import {
 import { prisma } from "@bcrp/database";
 import { AuditAction } from "@bcrp/shared";
 import { ensureGuild } from "./moderation.js";
+import { sendLogCard } from "./logging.js";
 
 export const AUTOMOD_NAME_PREFIX = "BCRP:";
 
@@ -108,4 +109,13 @@ export async function recordAutomodChange(
       metadata: { event },
     },
   });
+
+  // Send log card to automod log channel
+  const eventEmoji = event === "added" ? "✅" : event === "removed" ? "🗑️" : "⚙️";
+  await sendLogCard(
+    guild,
+    "automodLogChannelId",
+    `${eventEmoji} AutoMod ${event === "added" ? "Rule Added" : event === "removed" ? "Rule Removed" : "Rule Updated"}`,
+    `**Rule:** ${ruleName}\n**Action:** ${event}\n**By:** <@${actorDiscordId}>`,
+  );
 }

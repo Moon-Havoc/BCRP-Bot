@@ -47,6 +47,7 @@ const command: BotCommand = {
     await guild.bans.remove(userId, reason);
     const caseNumber = await recordModerationCase({
       guildId: guild.id,
+      guild,
       type: ModerationCaseType.UNBAN,
       targetDiscordId: userId,
       actorDiscordId: interaction.user.id,

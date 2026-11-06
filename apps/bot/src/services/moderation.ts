@@ -2,6 +2,7 @@ import { GuildMember, type ChatInputCommandInteraction, type Guild } from "disco
 import { prisma, ModerationCaseType } from "@bcrp/database";
 import { AuditAction } from "@bcrp/shared";
 import { createTextCard, toInteractionReply } from "@bcrp/discord-ui";
+import { sendLogCard } from "./logging.js";
 
 export function formatDiscordTimestamp(date: Date): string {
   return `<t:${Math.floor(date.getTime() / 1000)}:F>`;
@@ -54,6 +55,7 @@ export interface ModerationCaseInput {
   actorDiscordId: string;
   reason?: string;
   expiresAt?: Date;
+  guild?: Guild;
 }
 
 /**
@@ -95,6 +97,26 @@ export async function recordModerationCase(input: ModerationCaseInput): Promise<
         },
       },
     });
+
+    // Send log card to mod log channel
+    const guild = input.guild as Guild | undefined;
+    if (guild) {
+      const typeEmoji = {
+        WARNING: "⚠️",
+        NOTE: "📝",
+        TIMEOUT: "⏱️",
+        KICK: "👢",
+        BAN: "🔨",
+        UNBAN: "✅",
+      }[input.type] ?? "📋";
+      
+      await sendLogCard(
+        guild,
+        "modLogChannelId",
+        `${typeEmoji} ${input.type} — Case #${caseNumber}`,
+        `**Target:** <@${input.targetDiscordId}>\n**Moderator:** <@${input.actorDiscordId}>\n**Reason:** ${input.reason ?? "No reason provided"}`,
+      );
+    }
 
     return caseNumber;
   });

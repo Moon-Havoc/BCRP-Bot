@@ -27,6 +27,7 @@ const command: BotCommand = {
     const reason = interaction.options.getString("reason", true);
     const caseNumber = await recordModerationCase({
       guildId: guild.id,
+      guild,
       type: ModerationCaseType.NOTE,
       targetDiscordId: user.id,
       actorDiscordId: interaction.user.id,

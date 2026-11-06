@@ -46,6 +46,7 @@ const command: BotCommand = {
       // Record the case
       await recordModerationCase({
         guildId: interaction.guild.id,
+        guild: interaction.guild,
         actorDiscordId: interaction.user.id,
         targetDiscordId: targetUser.id,
         type: "BAN",

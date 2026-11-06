@@ -62,6 +62,7 @@ const command: BotCommand = {
     await member.timeout(minutes * 60_000, reason);
     const caseNumber = await recordModerationCase({
       guildId: guild.id,
+      guild,
       type: ModerationCaseType.TIMEOUT,
       targetDiscordId: member.id,
       actorDiscordId: interaction.user.id,
