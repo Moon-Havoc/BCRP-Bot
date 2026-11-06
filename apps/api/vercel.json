@@ -10,11 +10,19 @@
   "routes": [
     {
       "src": "/api/webhooks/erlc",
-      "dest": "/api/webhooks/erlc.ts"
+      "dest": "/api/webhooks/erlc.ts",
+      "headers": {
+        "Content-Type": "application/json"
+      }
     },
     {
       "src": "/api/(.*)",
       "dest": "/api/$1.ts"
     }
-  ]
+  ],
+  "functions": {
+    "api/webhooks/erlc.ts": {
+      "maxDuration": 10
+    }
+  }
 }

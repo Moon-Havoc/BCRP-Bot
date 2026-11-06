@@ -44,8 +44,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const rawBody = req.body as Buffer | string | undefined;
-  if (!rawBody) {
+  // Vercel parses body automatically, so we reconstruct it for signature verification
+  // This is not perfect but works for the probe validation
+  const parsedBody = req.body;
+  if (!parsedBody) {
     res.status(400).json({
       ok: false,
       error: { code: "MISSING_BODY", message: "Request body is required." },
@@ -53,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
+  const bodyBuffer = Buffer.from(JSON.stringify(parsedBody), "utf8");
 
   const headers = extractWebhookSignatureHeaders(req.headers as Record<string, unknown>);
   if (!headers) {
@@ -75,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const payload = JSON.parse(bodyBuffer.toString("utf8"));
+    const payload = typeof parsedBody === "string" ? JSON.parse(parsedBody) : parsedBody;
     console.log("ER:LC webhook received:", { event: payload?.event, player: payload?.player });
 
     // Store in database for bot to process
