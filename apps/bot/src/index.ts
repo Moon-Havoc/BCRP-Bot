@@ -8,6 +8,7 @@ import { registerInteractionRouter } from "./handlers/interaction-router.js";
 import { ticketComponentHandlers } from "./components/tickets.js";
 import { verificationComponentHandlers } from "./components/verification.js";
 import { createHealthServer } from "./services/health-server.js";
+import { startErlcMonitor } from "./services/erlc-monitor.js";
 import { createBotClient } from "./services/client.js";
 
 async function main(): Promise<void> {
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
     new Map([...ticketComponentHandlers(), ...verificationComponentHandlers()]),
     logger,
   );
+  startErlcMonitor(client);
   client.on("error", (error) => logger.error({ err: error }, "Discord client error"));
 
   const healthServer = await createHealthServer(

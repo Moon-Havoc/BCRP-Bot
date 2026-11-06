@@ -17,6 +17,7 @@ const commonSchema = z.object({
   ERLC_API_KEY: z.string().min(1).optional(),
   ERLC_API_BASE_URL: z.string().url().default("https://api.erlc.gg"),
   ERLC_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60000).default(10000),
+  ERLC_MONITOR_INTERVAL_SECONDS: z.coerce.number().int().min(15).max(600).default(60),
   API_AUTH_SECRET: z.string().min(32).optional(),
   DASHBOARD_URL: optionalUrl,
   API_URL: optionalUrl,
