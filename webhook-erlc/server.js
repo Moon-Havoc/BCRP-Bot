@@ -59,18 +59,31 @@ const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/156808813670013750
 async function forwardToDiscord(payload) {
   try {
     const events = payload.events || [];
+    console.log('Forwarding events to Discord:', events.length, 'events');
     
     for (const event of events) {
+      console.log('Processing event:', event.event, 'data:', JSON.stringify(event.data));
       const embed = createDiscordEmbed(event);
-      if (!embed) continue; // Skip probe events
+      if (!embed) {
+        console.log('Skipping event (no embed created):', event.event);
+        continue;
+      }
       
-      await fetch(DISCORD_WEBHOOK_URL, {
+      console.log('Sending embed to Discord:', JSON.stringify(embed, null, 2));
+      
+      const response = await fetch(DISCORD_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ embeds: [embed] })
       });
       
-      console.log('Forwarded event to Discord:', event.event);
+      console.log('Discord response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Discord webhook error:', response.status, errorText);
+      } else {
+        console.log('Successfully forwarded event to Discord:', event.event);
+      }
     }
   } catch (error) {
     console.error('Failed to forward to Discord:', error);
