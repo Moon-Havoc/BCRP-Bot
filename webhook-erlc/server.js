@@ -1,7 +1,6 @@
 const http = require('http');
 const { URL } = require('url');
-const { verify } = require('@noble/ed25519');
-const { hexToBytes, utf8ToBytes } = require('@noble/hashes/utils.js');
+const crypto = require('crypto');
 
 const ERLC_WEBHOOK_PUBLIC_KEY_B64 = "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA=";
 
@@ -14,14 +13,19 @@ function extractWebhookSignatureHeaders(headers) {
   return { timestamp, signature };
 }
 
-async function verifyWebhookSignature(rawBody, headers) {
+function verifyWebhookSignature(rawBody, headers) {
   try {
     // Build message: timestamp + raw_body
-    const message = new Uint8Array([...utf8ToBytes(headers.timestamp), ...rawBody]);
-    const signatureBytes = hexToBytes(headers.signature);
+    const timestampBytes = Buffer.from(headers.timestamp, 'utf8');
+    const message = Buffer.concat([timestampBytes, rawBody]);
+    
+    // Decode signature from hex
+    const signatureBytes = Buffer.from(headers.signature, 'hex');
+    
+    // Decode public key from base64
     const publicKeyBytes = Buffer.from(ERLC_WEBHOOK_PUBLIC_KEY_B64, 'base64');
     const rawPublicKey = publicKeyBytes.slice(-32);
-
+    
     console.log('Verifying signature:', {
       timestamp: headers.timestamp,
       signatureLength: headers.signature.length,
@@ -30,9 +34,20 @@ async function verifyWebhookSignature(rawBody, headers) {
       signatureBytesLength: signatureBytes.length
     });
 
-    const result = await verify(signatureBytes, message, rawPublicKey);
-    console.log('Signature verification result:', result);
-    return result;
+    // Create public key object from raw bytes
+    const publicKey = crypto.createPublicKey({
+      key: {
+        kty: 'OKP',
+        crv: 'Ed25519',
+        x: rawPublicKey.toString('base64')
+      },
+      format: 'jwk'
+    });
+
+    // Verify signature
+    const isValid = crypto.verify(null, message, publicKey, signatureBytes);
+    console.log('Signature verification result:', isValid);
+    return isValid;
   } catch (error) {
     console.error('Signature verification error:', error);
     return false;
@@ -72,7 +87,7 @@ const server = http.createServer((req, res) => {
     chunks.push(chunk);
   });
 
-  req.on('end', async () => {
+  req.on('end', () => {
     try {
       const rawBody = Buffer.concat(chunks);
       const headers = extractWebhookSignatureHeaders(req.headers);
@@ -94,7 +109,7 @@ const server = http.createServer((req, res) => {
       }
 
       // Verify the Ed25519 signature
-      const isValid = await verifyWebhookSignature(rawBody, headers);
+      const isValid = verifyWebhookSignature(rawBody, headers);
 
       if (!isValid) {
         console.log('Invalid signature - returning 401');
