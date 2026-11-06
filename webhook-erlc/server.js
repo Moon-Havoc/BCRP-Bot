@@ -135,8 +135,10 @@ function createDiscordEmbed(event) {
 const server = http.createServer((req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Signature-Ed25519, X-Signature-Timestamp');
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200);
@@ -166,14 +168,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Only accept POST requests
+  // Only accept POST requests for webhook
   if (req.method !== 'POST') {
     res.writeHead(405, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }));
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
   // Accept both / and /api/erlc paths
   if (url.pathname !== '/' && url.pathname !== '/api/erlc') {
     res.writeHead(404, { 'Content-Type': 'application/json' });
