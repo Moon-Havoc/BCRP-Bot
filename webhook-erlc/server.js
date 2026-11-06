@@ -14,19 +14,8 @@ function extractWebhookSignatureHeaders(headers) {
   return { timestamp, signature };
 }
 
-async function verifyWebhookSignature(rawBody, headers, maxSkewSeconds = 300) {
+async function verifyWebhookSignature(rawBody, headers) {
   try {
-    const now = Math.floor(Date.now() / 1000);
-    const timestampNum = parseInt(headers.timestamp, 10);
-    if (isNaN(timestampNum)) {
-      console.log('Invalid timestamp:', headers.timestamp);
-      return false;
-    }
-    if (Math.abs(now - timestampNum) > maxSkewSeconds) {
-      console.log('Timestamp too old/new:', { now, timestampNum, diff: Math.abs(now - timestampNum) });
-      return false;
-    }
-
     // Build message: timestamp + raw_body
     const message = new Uint8Array([...utf8ToBytes(headers.timestamp), ...rawBody]);
     const signatureBytes = hexToBytes(headers.signature);
@@ -37,7 +26,8 @@ async function verifyWebhookSignature(rawBody, headers, maxSkewSeconds = 300) {
       timestamp: headers.timestamp,
       signatureLength: headers.signature.length,
       messageLength: message.length,
-      publicKeyLength: rawPublicKey.length
+      publicKeyLength: rawPublicKey.length,
+      signatureBytesLength: signatureBytes.length
     });
 
     const result = await verify(signatureBytes, message, rawPublicKey);
