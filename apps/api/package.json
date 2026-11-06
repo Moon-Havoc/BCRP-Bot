@@ -1,0 +1,22 @@
+{
+  "name": "@bcrp/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/index.ts",
+    "start": "node --env-file-if-exists=../../.env --import tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@bcrp/config": "workspace:*",
+    "@bcrp/logger": "workspace:*",
+    "@bcrp/shared": "workspace:*",
+    "fastify": "^5.12.8",
+    "zod": "^4.3.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
+}

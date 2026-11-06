@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+  --navy-950: #10233b;
+  --navy-900: #142d49;
+  --navy-800: #1d3b59;
+  --coast-700: #42677f;
+  --coast-600: #5b8297;
+  --coast-100: #e8eff2;
+  --shell: #f5f7f8;
+  --paper: #ffffff;
+  --ink: #24384c;
+  --muted: #596d7f;
+  --line: #dce3e8;
+  --amber: #a96d24;
+  --amber-soft: #f5eddc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  background: var(--shell);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--shell);
+  color: var(--ink);
+  font-family:
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: white;
+  background: var(--coast-700);
+}
+
+.coastline {
+  background-image:
+    radial-gradient(ellipse at 75% 25%, rgb(255 255 255 / 12%) 0, transparent 46%),
+    repeating-radial-gradient(
+      ellipse at 100% 100%,
+      transparent 0 21px,
+      rgb(255 255 255 / 6%) 22px 23px,
+      transparent 24px 43px
+    );
+}
+
+.focus-ring:focus-visible {
+  outline: 3px solid #b8ced9;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.turbo/
+*.tsbuildinfo
+apps/dashboard/next-env.d.ts
+**/next-env.d.ts
+packages/database/src/generated/

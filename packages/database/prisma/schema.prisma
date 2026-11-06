@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RobloxLinkStatus {
+  PENDING
+  VERIFIED
+  REVOKED
+}
+
+enum StaffStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+
+enum ModerationCaseType {
+  WARNING
+  TIMEOUT
+  KICK
+  BAN
+  UNBAN
+  NOTE
+}
+
+enum TicketStatus {
+  OPEN
+  CLAIMED
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  IN_REVIEW
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ShiftStatus {
+  ACTIVE
+  COMPLETED
+  VOIDED
+}
+
+enum BotJobStatus {
+  PENDING
+  CLAIMED
+  SUCCEEDED
+  FAILED
+}
+
+model Guild {
+  id              String              @id @db.VarChar(20)
+  name            String              @db.VarChar(100)
+  iconHash        String?             @map("icon_hash") @db.VarChar(64)
+  installedAt     DateTime            @default(now()) @map("installed_at") @db.Timestamptz(3)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  settings        GuildSettings?
+  departments     Department[]
+  staffMembers    StaffMember[]
+  moderationCases ModerationCase[]
+  tickets         Ticket[]
+  applications    Application[]
+  shifts          Shift[]
+  auditLogs       AuditLog[]
+  workflows       AutomationWorkflow[]
+  botJobs         BotJob[]
+
+  @@map("guilds")
+}
+
+model GuildSettings {
+  id        String   @id @default(uuid()) @db.Uuid
+  guildId   String   @unique @map("guild_id") @db.VarChar(20)
+  timezone  String   @default("UTC") @db.VarChar(64)
+  locale    String   @default("en-US") @db.VarChar(16)
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@map("guild_settings")
+}
+
+model User {
+  id                  String              @id @db.VarChar(20)
+  username            String              @db.VarChar(100)
+  globalName          String?             @map("global_name") @db.VarChar(100)
+  avatarHash          String?             @map("avatar_hash") @db.VarChar(64)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  robloxLinks         RobloxAccountLink[]
+  staffMemberships    StaffMember[]
+  sessions            Session[]
+  applications        Application[]
+  shifts              Shift[]
+  authoredCases       ModerationCase[]    @relation("CaseActor")
+
+  @@map("users")
+}
+
+model RobloxAccount {
+  id          BigInt              @id
+  username    String              @db.VarChar(100)
+  displayName String?             @map("display_name") @db.VarChar(100)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+  links       RobloxAccountLink[]
+
+  @@map("roblox_accounts")
+}
+
+model RobloxAccountLink {
+  id              String           @id @default(uuid()) @db.Uuid
+  userId          String           @map("user_id") @db.VarChar(20)
+  robloxAccountId BigInt           @map("roblox_account_id")
+  status          RobloxLinkStatus @default(PENDING)
+  verificationCodeHash String      @map("verification_code_hash") @db.VarChar(128)
+  verifiedAt      DateTime?        @map("verified_at") @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  robloxAccount   RobloxAccount    @relation(fields: [robloxAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, robloxAccountId])
+  @@unique([robloxAccountId])
+  @@index([userId, status])
+  @@map("roblox_account_links")
+}
+
+model Department {
+  id           String          @id @default(uuid()) @db.Uuid
+  guildId      String          @map("guild_id") @db.VarChar(20)
+  name         String          @db.VarChar(100)
+  slug         String          @db.VarChar(100)
+  description  String?         @db.VarChar(1000)
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild        Guild           @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  ranks        DepartmentRank[]
+  staffMembers StaffMember[]
+  applications Application[]
+
+  @@unique([guildId, slug])
+  @@index([guildId, name])
+  @@map("departments")
+}
+
+model DepartmentRank {
+  id           String        @id @default(uuid()) @db.Uuid
+  departmentId String        @map("department_id") @db.Uuid
+  name         String        @db.VarChar(100)
+  level        Int
+  permissions  Json          @default("[]")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  department   Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  members      StaffMember[]
+
+  @@unique([departmentId, level])
+  @@unique([departmentId, name])
+  @@map("department_ranks")
+}
+
+model StaffMember {
+  id           String           @id @default(uuid()) @db.Uuid
+  guildId      String           @map("guild_id") @db.VarChar(20)
+  userId       String           @map("user_id") @db.VarChar(20)
+  departmentId String?          @map("department_id") @db.Uuid
+  rankId       String?          @map("rank_id") @db.Uuid
+  status       StaffStatus      @default(ACTIVE)
+  joinedAt     DateTime         @default(now()) @map("joined_at") @db.Timestamptz(3)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild        Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department?      @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  rank         DepartmentRank?  @relation(fields: [rankId], references: [id], onDelete: SetNull)
+  permissions  StaffPermission[]
+
+  @@unique([guildId, userId])
+  @@index([userId])
+  @@index([guildId, departmentId, status])
+  @@index([departmentId])
+  @@index([rankId])
+  @@map("staff_members")
+}
+
+model StaffPermission {
+  id            String      @id @default(uuid()) @db.Uuid
+  staffMemberId String      @map("staff_member_id") @db.Uuid
+  permission    String      @db.VarChar(150)
+  scope         String      @default("GUILD") @db.VarChar(32)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([staffMemberId, permission, scope])
+  @@index([permission, scope])
+  @@map("staff_permissions")
+}
+
+model ModerationCase {
+  id               String             @id @default(uuid()) @db.Uuid
+  guildId          String             @map("guild_id") @db.VarChar(20)
+  caseNumber       Int                @map("case_number")
+  type             ModerationCaseType
+  targetDiscordId  String             @map("target_discord_id") @db.VarChar(20)
+  actorDiscordId   String             @map("actor_discord_id") @db.VarChar(20)
+  actorUserId      String?            @map("actor_user_id") @db.VarChar(20)
+  reason           String?            @db.VarChar(2000)
+  expiresAt        DateTime?          @map("expires_at") @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild            Guild              @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  actor            User?              @relation("CaseActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([guildId, caseNumber])
+  @@index([guildId, targetDiscordId, createdAt])
+  @@index([guildId, type, createdAt])
+  @@index([actorUserId])
+  @@map("moderation_cases")
+}
+
+model Ticket {
+  id                String       @id @default(uuid()) @db.Uuid
+  guildId           String       @map("guild_id") @db.VarChar(20)
+  ticketNumber      Int          @map("ticket_number")
+  channelId         String?      @map("channel_id") @db.VarChar(20)
+  openerDiscordId   String       @map("opener_discord_id") @db.VarChar(20)
+  assignedDiscordId String?      @map("assigned_discord_id") @db.VarChar(20)
+  title             String       @db.VarChar(200)
+  status            TicketStatus @default(OPEN)
+  closedAt          DateTime?    @map("closed_at") @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild             Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, ticketNumber])
+  @@index([guildId, status, createdAt])
+  @@map("tickets")
+}
+
+model Application {
+  id           String            @id @default(uuid()) @db.Uuid
+  guildId      String            @map("guild_id") @db.VarChar(20)
+  applicantId  String            @map("applicant_id") @db.VarChar(20)
+  departmentId String?           @map("department_id") @db.Uuid
+  status       ApplicationStatus @default(SUBMITTED)
+  formVersion  Int               @default(1) @map("form_version")
+  answers      Json
+  submittedAt  DateTime          @default(now()) @map("submitted_at") @db.Timestamptz(3)
+  reviewedAt   DateTime?         @map("reviewed_at") @db.Timestamptz(3)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild        Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  applicant    User              @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  department   Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  @@index([guildId, status, submittedAt])
+  @@index([applicantId, createdAt])
+  @@index([departmentId])
+  @@map("applications")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.VarChar(20)
+  tokenHash String   @unique @map("token_hash") @db.VarChar(128)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Shift {
+  id        String      @id @default(uuid()) @db.Uuid
+  guildId   String      @map("guild_id") @db.VarChar(20)
+  userId    String      @map("user_id") @db.VarChar(20)
+  status    ShiftStatus @default(ACTIVE)
+  startedAt DateTime    @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime?   @map("ended_at") @db.Timestamptz(3)
+  notes     String?     @db.VarChar(1000)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild     Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, userId, status])
+  @@index([userId])
+  @@index([guildId, startedAt])
+  @@map("shifts")
+}
+
+model AuditLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  guildId         String   @map("guild_id") @db.VarChar(20)
+  actorDiscordId  String?  @map("actor_discord_id") @db.VarChar(20)
+  action          String   @db.VarChar(120)
+  targetType      String?  @map("target_type") @db.VarChar(80)
+  targetId        String?  @map("target_id") @db.VarChar(100)
+  outcome         String   @default("SUCCESS") @db.VarChar(32)
+  metadata        Json     @default("{}")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  guild           Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([guildId, actorDiscordId, createdAt])
+  @@index([guildId, action, createdAt])
+  @@map("audit_logs")
+}
+
+model AutomationWorkflow {
+  id        String   @id @default(uuid()) @db.Uuid
+  guildId   String   @map("guild_id") @db.VarChar(20)
+  name      String   @db.VarChar(120)
+  enabled   Boolean  @default(false)
+  version   Int      @default(1)
+  definition Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+  @@index([guildId, enabled])
+  @@map("automation_workflows")
+}
+
+model BotJob {
+  id              String       @id @default(uuid()) @db.Uuid
+  guildId         String       @map("guild_id") @db.VarChar(20)
+  actorDiscordId  String       @map("actor_discord_id") @db.VarChar(20)
+  idempotencyKey  String       @map("idempotency_key") @db.VarChar(128)
+  action          String       @db.VarChar(120)
+  payloadVersion  Int          @default(1) @map("payload_version")
+  payload         Json
+  status          BotJobStatus @default(PENDING)
+  attemptCount    Int          @default(0) @map("attempt_count")
+  maxAttempts     Int          @default(5) @map("max_attempts")
+  availableAt     DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
+  claimedBy       String?      @map("claimed_by") @db.VarChar(120)
+  leaseExpiresAt  DateTime?    @map("lease_expires_at") @db.Timestamptz(3)
+  completedAt     DateTime?    @map("completed_at") @db.Timestamptz(3)
+  lastErrorCode   String?      @map("last_error_code") @db.VarChar(80)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  guild           Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, idempotencyKey])
+  @@index([status, availableAt])
+  @@index([status, leaseExpiresAt])
+  @@index([guildId, createdAt])
+  @@map("bot_jobs")
+}

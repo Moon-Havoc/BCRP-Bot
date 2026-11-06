@@ -1,0 +1,27 @@
+{
+  "name": "@bcrp/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/index.ts",
+    "start": "node --env-file-if-exists=../../.env --import tsx src/index.ts",
+    "commands:register": "node --env-file-if-exists=../../.env --import tsx src/register-commands.ts",
+    "commands:check": "node --env-file-if-exists=../../.env --import tsx src/check-commands.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@bcrp/config": "workspace:*",
+    "@bcrp/database": "workspace:*",
+    "@bcrp/discord-ui": "workspace:*",
+    "@bcrp/erlc": "workspace:*",
+    "@bcrp/logger": "workspace:*",
+    "@bcrp/permissions": "workspace:*",
+    "@bcrp/shared": "workspace:*",
+    "discord.js": "14.28.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.0"
+  }
+}

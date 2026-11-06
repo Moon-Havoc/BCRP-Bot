@@ -1,0 +1,37 @@
+{
+  "name": "bcrp",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.32.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @bcrp/api --filter @bcrp/dashboard dev",
+    "dev:bot": "pnpm --filter @bcrp/bot dev",
+    "dev:api": "pnpm --filter @bcrp/api dev",
+    "dev:dashboard": "pnpm --filter @bcrp/dashboard dev",
+    "commands:register": "pnpm --filter @bcrp/bot commands:register",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "pnpm --filter @bcrp/database prisma:generate",
+    "db:validate": "pnpm --filter @bcrp/database prisma:validate",
+    "db:migrate": "pnpm --filter @bcrp/database prisma:migrate:dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "15.5.29",
+    "@types/node": "^24.6.0",
+    "eslint": "^10.14.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.1.0"
+  }
+}
