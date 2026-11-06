@@ -1,7 +1,12 @@
 import { loadRuntimeConfig } from "@bcrp/config";
 import { z } from "zod";
 import { ErlcApiError } from "./errors.js";
-import { erlcServerInfoSchema, serverInfoOptionsSchema, type ServerInfoOptions } from "./types.js";
+import {
+  erlcServerCommandResponseSchema,
+  erlcServerInfoSchema,
+  serverInfoOptionsSchema,
+  type ServerInfoOptions,
+} from "./types.js";
 
 const apiErrorSchema = z
   .object({
@@ -46,20 +51,24 @@ export class ErlcClient {
     });
   }
 
-  async fetchServerInformation(options: ServerInfoOptions = {}) {
-    const validatedOptions = serverInfoOptionsSchema.parse(options);
-    const url = new URL("/v2/server", this.baseUrl);
-    for (const [key, enabled] of Object.entries(validatedOptions)) {
-      if (enabled) url.searchParams.set(key, "true");
-    }
-
+  private async request(
+    method: "GET" | "POST",
+    path: string,
+    body?: string,
+  ): Promise<{ status: number; body: unknown }> {
+    const url = new URL(path, this.baseUrl);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     let response: Response;
     try {
       response = await this.fetchImplementation(url, {
-        method: "GET",
-        headers: { "server-key": this.apiKey, accept: "application/json" },
+        method,
+        headers: {
+          "server-key": this.apiKey,
+          accept: "application/json",
+          ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        },
+        ...(body !== undefined ? { body } : {}),
         signal: controller.signal,
       });
     } catch (error) {
@@ -71,7 +80,7 @@ export class ErlcClient {
       clearTimeout(timeout);
     }
 
-    const body: unknown = await response.json().catch(() => undefined);
+    const responseBody: unknown = await response.json().catch(() => undefined);
     if (response.status === 429) {
       const retryAfter = response.headers.get("retry-after");
       const retryAfterMs = retryAfter ? Math.max(0, Number(retryAfter) * 1000) : undefined;
@@ -82,7 +91,7 @@ export class ErlcClient {
     }
 
     if (!response.ok) {
-      const apiError = apiErrorSchema.safeParse(body);
+      const apiError = apiErrorSchema.safeParse(responseBody);
       if (apiError.success && apiError.data.code !== undefined) {
         throw new ErlcApiError(
           "API_ERROR",
@@ -90,19 +99,50 @@ export class ErlcClient {
           { httpStatus: response.status, apiCode: apiError.data.code },
         );
       }
-      throw new ErlcApiError("HTTP_ERROR", "ER:LC API request failed.", {
-        httpStatus: response.status,
-      });
+      const message =
+        apiError.success && typeof apiError.data.message === "string"
+          ? apiError.data.message
+          : undefined;
+      throw new ErlcApiError(
+        message ? "API_ERROR" : "HTTP_ERROR",
+        message ?? "ER:LC API request failed.",
+        { httpStatus: response.status },
+      );
     }
 
+    return { status: response.status, body: responseBody };
+  }
+
+  async fetchServerInformation(options: ServerInfoOptions = {}) {
+    const validatedOptions = serverInfoOptionsSchema.parse(options);
+    const url = new URL("/v2/server", this.baseUrl);
+    for (const [key, enabled] of Object.entries(validatedOptions)) {
+      if (enabled) url.searchParams.set(key, "true");
+    }
+
+    const { body } = await this.request("GET", `${url.pathname}${url.search}`);
     const parsed = erlcServerInfoSchema.safeParse(body);
     if (!parsed.success) {
       throw new ErlcApiError(
         "INVALID_RESPONSE",
         "ER:LC API returned an unexpected server response.",
-        {
-          httpStatus: response.status,
-        },
+      );
+    }
+    return parsed.data;
+  }
+
+  /** Runs an in-game command as virtual server management. */
+  async runServerCommand(command: string) {
+    const trimmed = command.trim();
+    if (!trimmed) {
+      throw new ErlcApiError("INVALID_RESPONSE", "Command cannot be empty.");
+    }
+    const { body } = await this.request("POST", "/v2/server/command", JSON.stringify({ command: trimmed }));
+    const parsed = erlcServerCommandResponseSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new ErlcApiError(
+        "INVALID_RESPONSE",
+        "ER:LC API returned an unexpected command response.",
       );
     }
     return parsed.data;

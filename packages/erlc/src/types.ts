@@ -101,3 +101,12 @@ export const serverInfoOptionsSchema = z.object({
 });
 
 export type ServerInfoOptions = z.infer<typeof serverInfoOptionsSchema>;
+
+export const erlcServerCommandResponseSchema = z
+  .object({
+    message: z.string().optional(),
+    commandId: z.string().optional(),
+  })
+  .passthrough();
+
+export type ErlcServerCommandResponse = z.infer<typeof erlcServerCommandResponseSchema>;

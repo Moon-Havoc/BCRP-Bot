@@ -4,6 +4,8 @@ export {
   erlcPlayerSchema,
   erlcServerInfoSchema,
   serverInfoOptionsSchema,
+  erlcServerCommandResponseSchema,
+  type ErlcServerCommandResponse,
   type ErlcPlayer,
   type ErlcServerInfo,
   type ServerInfoOptions,
