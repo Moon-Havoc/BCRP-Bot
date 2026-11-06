@@ -2,8 +2,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { verify } from "@noble/ed25519";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 
-const ERLC_WEBHOOK_PUBLIC_KEY_B64 =
-  "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA=";
+const ERLC_WEBHOOK_PUBLIC_KEY_B64 = "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA=";
 
 function extractWebhookSignatureHeaders(headers: Record<string, unknown>) {
   const timestamp = headers["x-signature-timestamp"];
@@ -79,8 +78,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const payload = JSON.parse(bodyBuffer.toString("utf8"));
     console.log("ER:LC webhook received:", { event: payload?.event, player: payload?.player });
 
-    // TODO: Forward to Discord bot via internal API or database
-    // For now, just acknowledge receipt
+    // Store in database for bot to process
+    const { prisma } = await import("@bcrp/database");
+    await prisma.webhookEvent.create({
+      data: {
+        source: "erlc",
+        eventType: payload?.event ?? "unknown",
+        payload,
+      },
+    });
 
     res.status(200).json({ ok: true, data: { received: true } });
   } catch (error) {

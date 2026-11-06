@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@bcrp/config": "workspace:*",
+    "@bcrp/database": "workspace:*",
     "@bcrp/logger": "workspace:*",
     "@bcrp/shared": "workspace:*",
     "@noble/ed25519": "^3.2.0",

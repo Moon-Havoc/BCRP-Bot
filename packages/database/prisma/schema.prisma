@@ -361,3 +361,17 @@ model BotJob {
   @@index([guildId, createdAt])
   @@map("bot_jobs")
 }
+
+model WebhookEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  source      String   @db.VarChar(50)
+  eventType   String   @map("event_type") @db.VarChar(100)
+  payload     Json
+  processed   Boolean  @default(false)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(3)
+  error       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([processed, createdAt])
+  @@map("webhook_events")
+}
