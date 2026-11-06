@@ -144,21 +144,6 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Only accept POST requests
-  if (req.method !== 'POST') {
-    res.writeHead(405, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }));
-    return;
-  }
-
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  // Accept both / and /api/erlc paths
-  if (url.pathname !== '/' && url.pathname !== '/api/erlc') {
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: false, error: 'Not found' }));
-    return;
-  }
-
   // Test endpoint for manual Discord forwarding
   if (url.pathname === '/test-discord' && req.method === 'GET') {
     const testPayload = {
@@ -178,6 +163,21 @@ const server = http.createServer((req, res) => {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: err.message }));
     });
+    return;
+  }
+
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }));
+    return;
+  }
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  // Accept both / and /api/erlc paths
+  if (url.pathname !== '/' && url.pathname !== '/api/erlc') {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'Not found' }));
     return;
   }
 
