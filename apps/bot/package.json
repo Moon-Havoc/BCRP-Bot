@@ -19,9 +19,8 @@
     "@bcrp/logger": "workspace:*",
     "@bcrp/permissions": "workspace:*",
     "@bcrp/shared": "workspace:*",
-    "discord.js": "14.28.1"
-  },
-  "devDependencies": {
+    "discord.js": "14.28.1",
     "tsx": "^4.23.0"
-  }
+  },
+  "devDependencies": {}
 }
