@@ -165,7 +165,7 @@ const server = http.createServer((req, res) => {
     chunks.push(chunk);
   });
 
-  req.on('end', () => {
+  req.on('end', async () => {
     try {
       const rawBody = Buffer.concat(chunks);
       const headers = extractWebhookSignatureHeaders(req.headers);
@@ -201,8 +201,8 @@ const server = http.createServer((req, res) => {
       const payload = JSON.parse(rawBody.toString('utf8'));
       console.log('ERLC webhook payload:', payload);
 
-      // Forward to Discord webhook
-      await forwardToDiscord(payload);
+      // Forward to Discord webhook (don't wait for it)
+      forwardToDiscord(payload).catch(err => console.error('Discord forwarding error:', err));
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, data: { received: true } }));
