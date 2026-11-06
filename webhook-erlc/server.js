@@ -1,5 +1,36 @@
 const http = require('http');
 const { URL } = require('url');
+const { verify } = require('@noble/ed25519');
+const { hexToBytes, utf8ToBytes } = require('@noble/hashes/utils.js');
+
+const ERLC_WEBHOOK_PUBLIC_KEY_B64 = "MCowBQYDK2VwAyEAjSICb9pp0kHizGQtdG8ySWsDChfGqi+gyFCttigBNOA=";
+
+function extractWebhookSignatureHeaders(headers) {
+  const timestamp = headers['x-signature-timestamp'];
+  const signature = headers['x-signature-ed25519'];
+  if (typeof timestamp !== 'string' || typeof signature !== 'string') {
+    return null;
+  }
+  return { timestamp, signature };
+}
+
+async function verifyWebhookSignature(rawBody, headers, maxSkewSeconds = 300) {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const timestampNum = parseInt(headers.timestamp, 10);
+    if (isNaN(timestampNum)) return false;
+    if (Math.abs(now - timestampNum) > maxSkewSeconds) return false;
+
+    const message = new Uint8Array([...utf8ToBytes(headers.timestamp), ...rawBody]);
+    const signatureBytes = hexToBytes(headers.signature);
+    const publicKeyBytes = Buffer.from(ERLC_WEBHOOK_PUBLIC_KEY_B64, 'base64');
+    const rawPublicKey = publicKeyBytes.slice(-32);
+
+    return await verify(signatureBytes, message, rawPublicKey);
+  } catch {
+    return false;
+  }
+}
 
 const server = http.createServer((req, res) => {
   // Set CORS headers
@@ -26,52 +57,55 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  let body = '';
+  // Collect raw body bytes
+  const chunks = [];
   req.on('data', chunk => {
-    body += chunk.toString();
+    chunks.push(chunk);
   });
 
-  req.on('end', () => {
+  req.on('end', async () => {
     try {
-      // Check for signature headers
-      const signature = req.headers['x-signature-ed25519'];
-      const timestamp = req.headers['x-signature-timestamp'];
-      const hasSignature = signature && timestamp;
+      const rawBody = Buffer.concat(chunks);
+      const headers = extractWebhookSignatureHeaders(req.headers);
 
       console.log('ERLC webhook received:', {
-        hasSignature,
-        signature: signature,
-        timestamp: timestamp,
-        body: body
+        hasSignature: !!headers,
+        bodyLength: rawBody.length,
+        timestamp: headers?.timestamp,
+        signature: headers?.signature?.substring(0, 20) + '...'
       });
 
       // If no signature headers, return 401 (invalid probe)
-      if (!hasSignature) {
-        console.log('No signature headers - returning 401 for probe validation');
+      if (!headers) {
+        console.log('No signature headers - returning 401');
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: false, error: 'Missing signature headers' }));
         return;
       }
 
-      // Validate signature format (should be hex string)
-      const isValidSignatureFormat = /^[0-9a-fA-F]+$/.test(signature) && signature.length > 0;
-      const isValidTimestamp = !isNaN(parseInt(timestamp, 10));
+      // Verify the Ed25519 signature
+      const isValid = await verifyWebhookSignature(rawBody, headers);
 
-      if (!isValidSignatureFormat || !isValidTimestamp) {
-        console.log('Invalid signature format - returning 401');
+      if (!isValid) {
+        console.log('Invalid signature - returning 401');
         res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: 'Invalid signature format' }));
+        res.end(JSON.stringify({ ok: false, error: 'Invalid signature' }));
         return;
       }
 
-      // Valid signature headers - this is the valid probe, return 200
-      console.log('Valid signature headers - returning 200 for valid probe');
+      // Valid signature - parse and process
+      console.log('Valid signature - returning 200');
+      const payload = JSON.parse(rawBody.toString('utf8'));
+      console.log('ERLC webhook payload:', payload);
+
+      // For now, just acknowledge receipt
+      // TODO: Forward to Discord with Components V2
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, data: { received: true } }));
     } catch (error) {
       console.error('Webhook error:', error);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, data: { received: true, error: 'logged' } }));
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'Verification failed' }));
     }
   });
 });
