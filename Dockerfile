@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS build
+FROM node:24-bookworm AS build
 WORKDIR /repo
 RUN corepack enable
 COPY . .
@@ -12,7 +12,7 @@ RUN pnpm exec esbuild apps/bot/src/index.ts apps/bot/src/commands/*.ts apps/bot/
       --external:discord.js --external:@prisma/client --external:prisma \
       --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"
 
-FROM node:24-bookworm-slim
+FROM node:24-bookworm
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /out/dist ./dist
