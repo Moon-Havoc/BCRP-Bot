@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.github
+.claude
+.agents
+apps/dashboard
+apps/api
+*.log
+.env
+.env.*
+dist
